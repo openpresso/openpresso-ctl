@@ -5,6 +5,7 @@ class OpenPressoCtl(ConanFile):
     name = "openpresso-ctl"
     description = "CLI client for the OpenpressoDaemon gRPC service"
     homepage = "https://openpresso.org"
+    url = "https://github.com/openpresso/openpresso-ctl.git"
     license = "GPL-3.0-or-later"
     settings = "os", "arch", "compiler", "build_type"
     package_type = "application"
