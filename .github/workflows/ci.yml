@@ -1,0 +1,206 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*.*.*' ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  define-version:
+    name: Define version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release_draft.outputs.version || steps.canary.outputs.version || steps.testing.outputs.version }}
+      version-type: ${{ steps.release_draft.outputs.version_type || steps.canary.outputs.version_type || steps.testing.outputs.version_type }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+
+      - name: Get Release Draft version
+        id: release_draft
+        if: ${{ github.event_name == 'push' && github.ref_type == 'tag' }}
+        run: |
+          echo "version_type=draft" >> $GITHUB_OUTPUT
+          version=${{ github.ref_name }}
+          echo "version=${version#v}" >> $GITHUB_OUTPUT
+        
+      - name: Get Canary version
+        id: canary
+        if: ${{ !steps.release_draft.outputs.version && github.event_name == 'push' && github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch }}
+        run: |
+          echo "version_type=canary" >> $GITHUB_OUTPUT
+          version=$(git describe --tags --long --exclude '*-*' 2>/dev/null || echo "v0.0.0-$(git rev-list --count HEAD)-g$(git rev-parse --short HEAD)")
+          echo "version=${version#v}" >> $GITHUB_OUTPUT
+
+      - name: Get Testing version
+        id: testing
+        if: ${{ !steps.release_draft.outputs.version && !steps.canary.outputs.version }}
+        run: |
+          echo "version_type=testing" >> $GITHUB_OUTPUT
+          branch=$(git rev-parse --abbrev-ref HEAD)
+          version=$(git describe --tags --long --exclude '*-*' 2>/dev/null || echo "v0.0.0-$(git rev-list --count HEAD)-g$(git rev-parse --short HEAD)")
+          echo "version=${version#v}-${branch//\//-}" >> $GITHUB_OUTPUT
+
+  make-docs:
+    name: Make Documentation
+    runs-on: ubuntu-latest
+    needs: define-version
+    outputs:
+      html_artifact_id: ${{ steps.upload-html.outputs.artifact_id }}
+      pdf_artifact_id: ${{ steps.upload-pdf.outputs.artifact_id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y graphviz latexmk texlive-latex-extra pandoc
+
+      - name: Setup Conan
+        uses: conan-io/setup-conan@v1
+
+      - name: Install Conan dependencies
+        run: conan install . -o "&:build_docs=DocsOnly" -b=missing --version=${{ needs.define-version.outputs.version }}
+
+      - name: Activate buildenv
+        run: source ./build/Release/generators/conanbuild.sh
+
+      - name: Configure CMake
+        run: cmake --preset conan-release
+
+      - name: Build docs target
+        run: cmake --build --preset conan-release --target docs
+
+      - name: Install HTML Documentation component
+        run: cmake --install build/Release --prefix ./artifacts --component DocumentationHtml
+
+      - name: Install PDF Documentation component
+        run: cmake --install build/Release --prefix ./artifacts --component DocumentationPdf
+
+      - name: Upload html docs files as artifact
+        id: upload-html
+        uses: actions/upload-artifact@v7
+        with:
+          name: openpresso-ctl-html-docs-${{ needs.define-version.outputs.version }}
+          path: ./artifacts/docs
+      
+      - name: Upload pdf docs as artifact
+        id: upload-pdf
+        uses: actions/upload-artifact@v7
+        with:
+          path: ./artifacts/*.pdf
+          archive: false
+
+  cross-compile:
+    name: Cross-compile binaries for ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    needs: [ define-version ]
+    strategy:
+      matrix:
+        target: [ armv6, armv8, x86_64 ]
+    container: ghcr.io/openpresso/openpresso-toolchain-${{ matrix.target }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Copy conan config from root user
+        run: cp -r /root/.conan2 ~/.conan2
+
+      - name: Setup remotes
+        id: setup-remotes
+        uses: ./.github/actions/setup-conan-remotes
+        with:
+          version-type: ${{ needs.define-version.outputs.version-type }}
+          ci-user: ${{ vars.CONAN_CI_USER }}
+          ci-token: ${{ secrets.CONAN_DEPLOY_KEY }}
+          testing-repo: ${{ vars.OPENPRESSO_CONAN_TESTING }}
+          canary-repo: ${{ vars.OPENPRESSO_CONAN_CANARY }}
+          draft-repo: ${{ vars.OPENPRESSO_CONAN_DRAFT }}
+          stable-repo: ${{ vars.OPENPRESSO_CONAN_STABLE }}
+          conancenter-cache-repo: ${{ vars.OPENPRESSO_CONANCENTER_CACHE }}
+
+      - name: Install Conan dependencies
+        run: |
+          conan install . -b=missing --version="${{ needs.define-version.outputs.version }}"
+
+      - name: Build
+        shell: bash
+        run: |
+            source ./build/Release/generators/conanbuild.sh
+            cmake --preset conan-release
+            cmake --build --preset conan-release
+            cpack --config build/Release/CPackConfig.cmake -B build/Release
+            cmake --install ./build/Release --prefix ./artifacts --component installer
+            cmake --install ./build/Release --prefix ./artifacts
+
+      - name: Upload deb package to artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          path: ./artifacts/openpresso-ctl*.deb
+          archive: false
+
+      - name: Upload executable to artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: openpresso-ctl-${{ needs.define-version.outputs.version }}-${{ matrix.target }}
+          path: ./artifacts/bin/*
+
+      - name: Setup Cloudsmith CLI
+        uses: cloudsmith-io/cloudsmith-cli-action@v2
+        with:
+          api-key: ${{ secrets.CONAN_DEPLOY_KEY }}
+
+      - name: Upload to remote
+        run: cloudsmith push deb openpresso/${{ steps.setup-remotes.outputs.target-repo }}/debian/trixie ./artifacts/openpresso-ctl*.deb
+
+  deploy-docs:
+    name: Deploy Documentation
+    runs-on: ubuntu-latest
+    needs: [ make-docs, define-version ]
+    if: ${{ needs.define-version.outputs.version-type == 'canary' && github.repository == 'openpresso/openpresso-ctl' }}
+    steps:
+      - name: Download docs artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: openpresso-ctl-html-docs-${{ needs.define-version.outputs.version }}
+          path: ./docs
+
+      - name: Deploy docs
+        uses: openpresso/openpresso.github.io/.github/actions/deploy-docs@gh-pages
+        with:
+          commit_message: "[CI] Openpresso-ctl docs deployed: ${{ github.event.head_commit.message }}"
+          repository: openpresso/openpresso.github.io
+          deployment_key: ${{ secrets.PAGES_DEPLOY_KEY }}
+          source_dir: ./docs
+          target_dir: openpresso-ctl
+          checkout_path: pages
+          version: ${{ needs.define-version.outputs.version }}
+          verion_type: 'canary'
+
+  release-draft:
+    name: Create release draft
+    runs-on: ubuntu-latest
+    needs: [ define-version, cross-compile ]
+    if: ${{ needs.define-version.outputs.version-type == 'draft' && github.repository == 'openpresso/openpresso-ctl' }}
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: release-assets
+          skip-decompress: true
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: ${{ contains(github.ref_name, '-rc') }}
+          generate_release_notes: true
+          files: release-assets/*
