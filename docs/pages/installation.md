@@ -18,7 +18,7 @@ The Openpresso packages are hosted on Cloudsmith. Run the following command to a
 
 ```sh
 curl -1sLf \
-  'https://dl.cloudsmith.io/public/openpresso/@OPENPRESSOD_REPO_CHANNEL@/setup.deb.sh' \
+  'https://dl.cloudsmith.io/public/openpresso/@OPENPRESSO_CTL_REPO_CHANNEL@/setup.deb.sh' \
   | sudo -E bash
 ```
 
