@@ -42,6 +42,7 @@ if(NOT DOCS_ONLY)
 
     target_compile_definitions(openpresso-ctl PRIVATE
         OPENPRESSOD_SOCKET_PATH="${OPENPRESSOD_SOCKET_PATH}"
+        OPENPRESSO_CTL_VERSION="${OPENPRESSO_CTL_VERSION}"
     )
 
     install(TARGETS openpresso-ctl RUNTIME DESTINATION bin)

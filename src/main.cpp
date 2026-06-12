@@ -7,6 +7,7 @@ int main(int argc, char** argv)
 {
   CLI::App app{"openpresso-ctl \u2014 CLI client for OpenpressoDaemon"};
   app.set_help_all_flag("--help-all", "Expand all subcommand help");
+  app.set_version_flag("-v,--version", OPENPRESSO_CTL_VERSION);
   app.require_subcommand(1);
 
   std::string socketPath;
