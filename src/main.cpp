@@ -12,7 +12,7 @@ int main(int argc, char** argv)
   std::string socketPath;
   app.add_option("-s,--socket", socketPath, "unix://path or host:port [env: OPENPRESSO_SOCK]")
     ->envname("OPENPRESSO_SOCK")
-    ->default_val("unix://run/openpresso/openpresso.sock");
+    ->default_val("unix://" OPENPRESSOD_SOCKET_PATH);
 
   // ── scale ────────────────────────────────────────────────────────────────
   app.add_subcommand("reset-scales", "Zero the weight scales");

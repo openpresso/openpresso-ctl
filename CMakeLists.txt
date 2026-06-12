@@ -14,6 +14,8 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(OPENPRESSOD_SOCKET_PATH "/run/openpresso/openpresso.sock")
+
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 include(openpresso-ctl-docs)
@@ -36,6 +38,10 @@ if(NOT DOCS_ONLY)
     target_link_libraries(openpresso-ctl PRIVATE
         openpresso_proto::openpresso_proto
         CLI11::CLI11
+    )
+
+    target_compile_definitions(openpresso-ctl PRIVATE
+        OPENPRESSOD_SOCKET_PATH="${OPENPRESSOD_SOCKET_PATH}"
     )
 
     install(TARGETS openpresso-ctl RUNTIME DESTINATION bin)
