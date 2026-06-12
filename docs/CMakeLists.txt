@@ -6,6 +6,10 @@ FetchContent_GetProperties(doxygen-awesome-css SOURCE_DIR AWESOME_CSS_DIR)
 
 set(DOXY_PAGES
     index.md
+    installation.md
+    usage.md
+    profiles-and-monitoring.md
+    reference.md
 )
 
 foreach(DOCFILE ${DOXY_PAGES})
