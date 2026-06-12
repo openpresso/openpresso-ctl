@@ -12,7 +12,7 @@ int getProfile(openpressod::OpenpressoDaemon::Stub& stub);
 int setProfile(openpressod::OpenpressoDaemon::Stub& stub, const std::string& file);
 
 int getUserSettings(openpressod::OpenpressoDaemon::Stub& stub);
-int setUserSettings(openpressod::OpenpressoDaemon::Stub& stub, int steamTemp);
+int setUserSettings(openpressod::OpenpressoDaemon::Stub& stub, const std::string& file);
 
 int setPower(openpressod::OpenpressoDaemon::Stub& stub, bool powerOn);
 int getPower(openpressod::OpenpressoDaemon::Stub& stub);

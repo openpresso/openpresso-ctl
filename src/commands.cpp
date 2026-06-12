@@ -20,14 +20,15 @@ using grpc::ClientContext;
 namespace
 {
 
-BrewProfile profileFromJson(const std::string& jsonText)
+template<typename T>
+T messageFromJson(const std::string& jsonText)
 {
-  BrewProfile profile;
-  const auto status = google::protobuf::json::JsonStringToMessage(jsonText, &profile);
+  T message;
+  const auto status = google::protobuf::json::JsonStringToMessage(jsonText, &message);
   if (!status.ok()) {
     throw std::runtime_error(std::string(status.message()));
   }
-  return profile;
+  return message;
 }
 
 std::string readText(const std::string& path)
@@ -97,7 +98,7 @@ int setProfile(OpenpressoDaemon::Stub& stub, const std::string& file)
 
   BrewProfile profile;
   try {
-    profile = profileFromJson(jsonText);
+    profile = messageFromJson<BrewProfile>(jsonText);
   }
   catch (const std::exception& e) {
     std::println(stderr, "Profile parse error: {}", e.what());
@@ -121,15 +122,42 @@ int getUserSettings(OpenpressoDaemon::Stub& stub)
   if (!checkStatus(stub.getUserSettings(&ctx, req, &settings))) {
     return 1;
   }
-  std::println("Steam Temperature: {}", settings.steamttemperature());
+  
+  std::string settingsJson;
+  google::protobuf::json::PrintOptions opts;
+  opts.add_whitespace = true;
+  opts.always_print_fields_with_no_presence = true;
+
+  if (const auto status = google::protobuf::json::MessageToJsonString(settings, &settingsJson, opts); !status.ok()) {
+    std::println(stderr, "JSON serialisation failed: {}", std::string(status.message()));
+    return 1;
+  }
+  std::println("{}", settingsJson);
+
   return 0;
 }
 
-int setUserSettings(OpenpressoDaemon::Stub& stub, int steamTemp)
+int setUserSettings(OpenpressoDaemon::Stub& stub, const std::string& file)
 {
-  ClientContext ctx;
+  std::string jsonText;
+  try {
+    jsonText = readText(file);
+  }
+  catch (const std::exception& e) {
+    std::println(stderr, "Read error: {}", e.what());
+    return 1;
+  }
+
   UserSettings req;
-  req.set_steamttemperature(steamTemp);
+  try {
+    req = messageFromJson<UserSettings>(jsonText);
+  }
+  catch (const std::exception& e) {
+    std::println(stderr, "User settings parse error: {}", e.what());
+    return 1;
+  }
+
+  ClientContext ctx;
   google::protobuf::Empty resp;
   if (!checkStatus(stub.setUserSettings(&ctx, req, &resp))) {
     return 1;

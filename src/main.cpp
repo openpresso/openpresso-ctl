@@ -10,7 +10,7 @@ int main(int argc, char** argv)
   app.require_subcommand(1);
 
   std::string socketPath;
-  app.add_option("-s,--socket", socketPath, "unix://path or host:port [env: OPENPRESSO_SOCK]")
+  app.add_option("-s,--socket", socketPath, "Daemon unix or tcp socket (unix://path or host:port)")
     ->envname("OPENPRESSO_SOCK")
     ->default_val("unix://" OPENPRESSOD_SOCKET_PATH);
 
@@ -20,23 +20,16 @@ int main(int argc, char** argv)
   // ── profile ──────────────────────────────────────────────────────────────
   app.add_subcommand("get-profile", "Print active brew profile JSON");
 
-  auto* cmdSetProfile =
-    app.add_subcommand("set-profile",
-                       "Upload a brew profile from proto-JSON (file or stdin).\n"
-                       "Field names follow proto3 JSON mapping (camelCase or snake_case).\n"
-                       "Duration values use the \"Xs\" string form, e.g. \"30s\" or \"4.5s\".\n"
-                       "Example: {\"name\":\"Espresso\",\"temperature\":93,\"totalWeight\":36,\n"
-                       "          \"steps\":[{\"pressure\":200,\"stepTime\":\"5s\"},\n"
-                       "                    {\"pressure\":900,\"totalWeight\":36}]}");
+  auto* cmdSetProfile = app.add_subcommand("set-profile", "Upload a brew profile from proto-JSON (file or stdin)");
   std::string profileFile;
   cmdSetProfile->add_option("file", profileFile, "Path to JSON file (omit to read from stdin)");
 
   // ── settings ─────────────────────────────────────────────────────────────
-  app.add_subcommand("get-user-settings", "Print user settings");
+  app.add_subcommand("get-user-settings", "Print user settings JSON");
 
-  auto* cmdSetSettings = app.add_subcommand("set-user-settings", "Update user settings");
-  int steamTemp = 0;
-  cmdSetSettings->add_option("--steam-temp", steamTemp, "Steam temperature")->required();
+  auto* cmdSetSettings = app.add_subcommand("set-user-settings", "Update user settings from proto-JSON (file or stdin)");
+  std::string userSettingsFile;
+  cmdSetSettings->add_option("file", userSettingsFile, "Path to JSON file (omit to read from stdin)");
 
   // ── power ────────────────────────────────────────────────────────────────
   app.add_subcommand("power-on", "Turn the machine on");
@@ -94,7 +87,7 @@ int main(int argc, char** argv)
     return commands::getUserSettings(*stub);
   }
   if (cmd == "set-user-settings") {
-    return commands::setUserSettings(*stub, steamTemp);
+    return commands::setUserSettings(*stub, userSettingsFile);
   }
   if (cmd == "power-on") {
     return commands::setPower(*stub, true);
