@@ -136,8 +136,8 @@ jobs:
             cmake --preset conan-release
             cmake --build --preset conan-release
             cpack --config build/Release/CPackConfig.cmake -B build/Release
-            cmake --install ./build/Release --prefix ./artifacts --component installer
-            cmake --install ./build/Release --prefix ./artifacts
+            cmake --install ./build/Release --prefix ./artifacts --component Installer
+            cmake --install ./build/Release --prefix ./artifacts --component Runtime
 
       - name: Upload deb package to artifacts
         uses: actions/upload-artifact@v7
