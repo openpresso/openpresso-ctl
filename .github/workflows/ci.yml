@@ -203,4 +203,4 @@ jobs:
           draft: true
           prerelease: ${{ contains(github.ref_name, '-rc') }}
           generate_release_notes: true
-          files: release-assets/*
+          files: release-assets/*/*
