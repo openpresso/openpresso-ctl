@@ -74,6 +74,5 @@ install(FILES "${DOXYGEN_LATEX_DIR}/openpresso-ctl.pdf"
   EXCLUDE_FROM_ALL)
 
 install(DIRECTORY "${MAN_DIR}/"
-  DESTINATION share/man
-  COMPONENT openpresso-ctl-deb-package-content
-  EXCLUDE_FROM_ALL)
+  DESTINATION ${CMAKE_INSTALL_MANDIR}
+  COMPONENT ManPages)

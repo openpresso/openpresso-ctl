@@ -45,7 +45,10 @@ if(NOT DOCS_ONLY)
         OPENPRESSO_CTL_VERSION="${OPENPRESSO_CTL_VERSION}"
     )
 
-    install(TARGETS openpresso-ctl RUNTIME DESTINATION bin)
+    install(TARGETS openpresso-ctl 
+        RUNTIME 
+            DESTINATION ${CMAKE_INSTALL_BINDIR}
+            COMPONENT Runtime)
 
     add_subdirectory(packaging)
 endif()
