@@ -51,6 +51,27 @@ Using `apt-get` rather than `dpkg -i` is preferred because `apt-get` resolves pa
 
 ---
 
+## Post-installation steps
+
+Openpressod Unix socket by default is owner by `openpressod:openpressod`.
+To access it as non-root user you may need to add it to `openpressod` group.
+
+1. Ensure the gpoup exists if you install CLI tool before the daemon.
+
+```bash
+sudo groupadd openpressod
+```
+
+2. Add your user to the `openpressod` group.
+
+```bash
+sudo usermod -aG openpressod $USER
+```
+
+3. Log out and log back in so that your group membership is re-evaluated.
+
+---
+
 ## Verifying the installation
 
 Confirm that the binary is available in `PATH`:
