@@ -38,7 +38,7 @@ class OpenPressoCtl(ConanFile):
 
     def requirements(self):
         if(self.options.build_docs != "DocsOnly"):
-            self.requires("openpresso_proto/1.0.0-rc2")
+            self.requires("openpresso_proto/0.0.0-13-ge4e9888")
             self.requires("cli11/[>=2.3.0]")
 
     def generate(self):
