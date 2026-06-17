@@ -18,7 +18,7 @@ metrics and events monitoring capabilities.
 For detailed information on installation, configuration, and usage, please refer to the following resources:
 
 - 🏠 **[OpenPresso Main Site](https://openpresso.org)**: General project overview and ecosystem.
-- 📖 **[Technical Documentation](https://openpresso.org/openpresso-ctl)**: Detailed installation and usage guides.
+- 📖 **[Technical Documentation](https://openpresso.org/openpresso-docs/openpresso-ctl)**: Detailed installation and usage guides.
 
 ---
 
